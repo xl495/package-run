@@ -20,8 +20,8 @@ Manage multiple frontend dev servers in one place: **start / stop / restart** `p
 
 | Feature | Description |
 | --- | --- |
-| Menu bar / tray | macOS: `›_` menu bar icon + global shortcut (`⌥Space` by default). Windows/Linux: window + system tray (closing the window minimizes to tray) |
-| Panel pin | Pin the panel so it stays open when clicking outside — useful for watching logs |
+| Menu bar / tray | Left/right-click the tray icon for a **native menu** (Herd-style): Open, Add Project, Settings, Updates, Quit. Double-click opens the main window. |
+| Main window | Full resizable management window (not a tiny popover) for projects, scripts, logs, and settings |
 | Project management | Add local folders with a `package.json`; search, pin, and drag to reorder |
 | Package managers | Auto-detect pnpm / yarn / bun / npm (lockfile + `packageManager` field); manual override supported |
 | Git status | Shows current branch and dirty working tree indicator |

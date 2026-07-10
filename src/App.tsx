@@ -18,8 +18,6 @@ import {
   Keyboard,
   MonitorUp,
   Moon,
-  Pin,
-  PinOff,
   Play,
   Plus,
   Power,
@@ -78,9 +76,6 @@ interface TaskInfo {
   url: string | null;
   log_file: string;
 }
-
-// macOS gets the menu-bar popover look; other platforms are a normal window.
-const IS_MAC = navigator.userAgent.includes("Mac");
 
 const PREFERRED_ORDER = ["dev", "start", "serve", "build", "preview", "test", "lint"];
 
@@ -201,7 +196,6 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [autoStart, setAutoStart] = useState(false);
-  const [winPinned, setWinPinned] = useState(false);
   const [portQuery, setPortQuery] = useState("");
   const [portResult, setPortResult] = useState<PortInfo | null | "free">(null);
   const [shortcut, setShortcut] = useState<string | null>(null);
@@ -354,7 +348,7 @@ export default function App() {
     return () => {
       unlisteners.forEach((p) => p.then((fn) => fn()));
     };
-  }, [refresh, removeRunningTask, t]);
+  }, [refresh, removeRunningTask, t, flash]);
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
@@ -388,14 +382,36 @@ export default function App() {
     persistTheme(next);
   };
 
-  const addProject = async () => {
+  const addProject = useCallback(async () => {
     try {
       const p = await invoke<Project | null>("pick_and_add_project");
       if (p) await refresh();
     } catch (e) {
       flashErr(e);
     }
-  };
+  }, [refresh, flash, t]);
+
+  // Tray menu → frontend actions (Herd-style menu drives the big window).
+  useEffect(() => {
+    const unlisteners = [
+      listen("tray-add-project", () => {
+        addProject();
+      }),
+      listen("open-settings", () => {
+        setSettingsOpen(true);
+      }),
+      listen("check-updates", () => {
+        setSettingsOpen(true);
+        runUpdateCheck({ ignoreDismissed: true, manual: true });
+      }),
+      listen("projects-changed", () => {
+        refresh().catch(() => {});
+      }),
+    ];
+    return () => {
+      unlisteners.forEach((p) => p.then((fn) => fn()));
+    };
+  }, [addProject, refresh, runUpdateCheck]);
 
   const removeProject = async (id: string) => {
     await invoke("remove_project", { id });
@@ -588,12 +604,6 @@ export default function App() {
     }
   };
 
-  const toggleWinPin = async () => {
-    const next = !winPinned;
-    setWinPinned(next);
-    await invoke("set_window_pinned", { pinned: next });
-  };
-
   const queryPort = async (raw: string) => {
     const port = parseInt(raw, 10);
     if (!port || port < 1 || port > 65535) {
@@ -713,7 +723,7 @@ export default function App() {
   }, [autostartBooted, projects, running]);
 
   return (
-    <div className={`popover ${IS_MAC ? "mac" : "desktop"}`}>
+    <div className="app-shell desktop">
       <header className="titlebar" data-tauri-drag-region>
         <div className="title-identity" data-tauri-drag-region>
           <span className="logo" data-tauri-drag-region>
@@ -724,15 +734,6 @@ export default function App() {
           </span>
         </div>
         <div className="titlebar-actions">
-          {IS_MAC && (
-            <button
-              className={`icon-btn ${winPinned ? "active" : ""}`}
-              title={winPinned ? t.unpinPanel : t.pinPanel}
-              onClick={toggleWinPin}
-            >
-              {winPinned ? <PinOff size={14} /> : <Pin size={14} />}
-            </button>
-          )}
           <button className="icon-btn" title={t.addProject} onClick={addProject}>
             <Plus size={16} />
           </button>
@@ -780,7 +781,11 @@ export default function App() {
         </div>
       )}
 
-      {projects.length > 3 && (
+      {error && <div className="toast">{error}</div>}
+
+      <div className="main-stage">
+      <div className="workspace">
+      {(projects.length > 2 || search.trim().length > 0) && (
         <div className="search-bar">
           <Search className="search-icon" size={14} />
           <input
@@ -791,9 +796,6 @@ export default function App() {
           />
         </div>
       )}
-
-      {error && <div className="toast">{error}</div>}
-
       <div className="content">
         {projects.length === 0 && (
           <div className="empty">
@@ -1095,8 +1097,42 @@ export default function App() {
         })}
       </div>
 
-      <div className="footer">
-        {settingsOpen && (
+      {logKey && (
+        <div className="log-panel">
+          <div className="log-header">
+            <span>{logKey.split(":").slice(1).join(":")} {t.logsTitle}</span>
+            <div className="log-header-actions">
+              <button className="chip small ghost" onClick={() => openLogFile(logKey)}>
+                {t.openLogFile}
+              </button>
+              <button className="icon-btn" onClick={() => setLogKey(null)}>
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+          <div className="log-body" ref={logRef}>
+            {logLines.length === 0 ? (
+              <div className="log-line dim">{t.waitingOutput}</div>
+            ) : (
+              logLines.map((l, i) => (
+                <div key={i} className="log-line">
+                  {renderLogLine(l)}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+      </div>{/* workspace */}
+
+      {settingsOpen && (
+        <aside className="settings-sidebar">
+          <div className="settings-sidebar-header">
+            <span>{t.settingsTitle}</span>
+            <button className="icon-btn" title={t.settings} onClick={() => setSettingsOpen(false)}>
+              <X size={14} />
+            </button>
+          </div>
           <div className="settings-panel">
             <div className="settings-section">
               <div className="settings-heading">{t.settingsGeneral}</div>
@@ -1215,35 +1251,9 @@ export default function App() {
               </div>
             </div>
           </div>
-        )}
-      </div>
-
-      {logKey && (
-        <div className="log-panel">
-          <div className="log-header">
-            <span>{logKey.split(":").slice(1).join(":")} {t.logsTitle}</span>
-            <div className="log-header-actions">
-              <button className="chip small ghost" onClick={() => openLogFile(logKey)}>
-                {t.openLogFile}
-              </button>
-              <button className="icon-btn" onClick={() => setLogKey(null)}>
-                <X size={14} />
-              </button>
-            </div>
-          </div>
-          <div className="log-body" ref={logRef}>
-            {logLines.length === 0 ? (
-              <div className="log-line dim">{t.waitingOutput}</div>
-            ) : (
-              logLines.map((l, i) => (
-                <div key={i} className="log-line">
-                  {renderLogLine(l)}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+        </aside>
       )}
+      </div>{/* main-stage */}
     </div>
   );
 }

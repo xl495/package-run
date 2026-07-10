@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 const LATEST_API: &str = "https://api.github.com/repos/xl495/package-run/releases/latest";
-const RELEASES_PAGE: &str = "https://github.com/xl495/package-run/releases";
+pub const RELEASES_PAGE: &str = "https://github.com/xl495/package-run/releases";
 
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]

@@ -5,14 +5,13 @@
       {
         "label": "main",
         "title": "Package Run",
-        "width": 400,
-        "height": 540,
-        "resizable": false,
-        "decorations": false,
-        "transparent": true,
-        "shadow": true,
-        "alwaysOnTop": true,
-        "visibleOnAllWorkspaces": true,
+        "width": 960,
+        "height": 680,
+        "minWidth": 720,
+        "minHeight": 520,
+        "resizable": true,
+        "decorations": true,
+        "center": true,
         "skipTaskbar": true,
         "visible": false
       }

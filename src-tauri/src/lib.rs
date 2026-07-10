@@ -4,29 +4,32 @@ pub mod runner;
 pub mod settings;
 pub mod update;
 
-#[cfg(target_os = "macos")]
-use std::sync::atomic::Ordering;
 use tauri::{
     image::Image,
-    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager, WindowEvent,
+    menu::{Menu, MenuItem, PredefinedMenuItem},
+    tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
+    Emitter, Manager, Runtime, WindowEvent,
 };
-#[cfg(target_os = "macos")]
-use tauri_plugin_positioner::{Position, WindowExt};
+use tauri_plugin_opener::OpenerExt;
 
-fn toggle_popover(app: &tauri::AppHandle) {
+/// Bring the main management window to front (Herd "Open …" behavior).
+fn show_main_window<R: Runtime>(app: &tauri::AppHandle<R>) {
     let Some(window) = app.get_webview_window("main") else {
         return;
     };
-    if window.is_visible().unwrap_or(false) {
+    let _ = window.unminimize();
+    let _ = window.show();
+    let _ = window.set_focus();
+}
+
+fn toggle_main_window<R: Runtime>(app: &tauri::AppHandle<R>) {
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    if window.is_visible().unwrap_or(false) && window.is_focused().unwrap_or(false) {
         let _ = window.hide();
     } else {
-        // Only macOS anchors the window under the menu bar icon; on
-        // Windows/Linux it's a regular window that keeps its position.
-        #[cfg(target_os = "macos")]
-        let _ = window.move_window(Position::TrayBottomCenter);
-        let _ = window.show();
-        let _ = window.set_focus();
+        show_main_window(app);
     }
 }
 
@@ -35,12 +38,9 @@ fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
 
+/// Kept for API compatibility; main window is a normal window now (no popover pin).
 #[tauri::command]
-fn set_window_pinned(state: tauri::State<'_, projects::UiState>, pinned: bool) {
-    state
-        .window_pinned
-        .store(pinned, std::sync::atomic::Ordering::SeqCst);
-}
+fn set_window_pinned(_pinned: bool) {}
 
 #[tauri::command]
 fn set_running_badge(app: tauri::AppHandle, count: usize) -> Result<(), String> {
@@ -48,7 +48,7 @@ fn set_running_badge(app: tauri::AppHandle, count: usize) -> Result<(), String> 
         let tooltip = if count == 0 {
             "Package Run".to_string()
         } else {
-            format!("Package Run - {count} running")
+            format!("Package Run — {count} running")
         };
         tray.set_tooltip(Some(tooltip)).map_err(|e| e.to_string())?;
 
@@ -57,6 +57,33 @@ fn set_running_badge(app: tauri::AppHandle, count: usize) -> Result<(), String> 
             .map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+fn build_tray_menu<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>> {
+    let open = MenuItem::with_id(app, "open", "Open Package Run", true, None::<&str>)?;
+    let add = MenuItem::with_id(app, "add_project", "Add Project…", true, None::<&str>)?;
+    let settings = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)?;
+    let updates = MenuItem::with_id(app, "updates", "Check for Updates…", true, None::<&str>)?;
+    let releases = MenuItem::with_id(app, "releases", "Open Releases Page", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit Package Run", true, None::<&str>)?;
+    let sep1 = PredefinedMenuItem::separator(app)?;
+    let sep2 = PredefinedMenuItem::separator(app)?;
+    let sep3 = PredefinedMenuItem::separator(app)?;
+
+    Menu::with_items(
+        app,
+        &[
+            &open,
+            &sep1,
+            &add,
+            &settings,
+            &sep2,
+            &updates,
+            &releases,
+            &sep3,
+            &quit,
+        ],
+    )
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -99,39 +126,63 @@ pub fn run() {
             quit_app,
         ])
         .setup(|app| {
-            // Menu bar app: no Dock icon.
+            // Stay in the menu bar / tray; no permanent Dock icon on macOS.
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
+            let menu = build_tray_menu(app.handle())?;
             let icon = Image::from_bytes(include_bytes!("../icons/tray-icon.png"))?;
+
             TrayIconBuilder::with_id("main-tray")
                 .icon(icon)
-                // Template rendering is a macOS concept; on Windows the raw
-                // icon is used as-is.
                 .icon_as_template(cfg!(target_os = "macos"))
                 .tooltip("Package Run")
+                .menu(&menu)
+                // Herd-like: left click opens the native menu (right click does too).
+                .show_menu_on_left_click(true)
+                .on_menu_event(|app, event| {
+                    match event.id().as_ref() {
+                        "open" => show_main_window(app),
+                        "add_project" => {
+                            show_main_window(app);
+                            let _ = app.emit("tray-add-project", ());
+                        }
+                        "settings" => {
+                            show_main_window(app);
+                            let _ = app.emit("open-settings", ());
+                        }
+                        "updates" => {
+                            show_main_window(app);
+                            let _ = app.emit("check-updates", ());
+                        }
+                        "releases" => {
+                            let _ = app.opener().open_url(update::RELEASES_PAGE, None::<&str>);
+                        }
+                        "quit" => app.exit(0),
+                        _ => {}
+                    }
+                })
                 .on_tray_icon_event(|tray, event| {
                     tauri_plugin_positioner::on_tray_event(tray.app_handle(), &event);
-                    if let TrayIconEvent::Click {
+                    // Double-click left toggles the main window for power users.
+                    if let TrayIconEvent::DoubleClick {
                         button: MouseButton::Left,
-                        button_state: MouseButtonState::Up,
                         ..
                     } = event
                     {
-                        toggle_popover(tray.app_handle());
+                        toggle_main_window(tray.app_handle());
                     }
                 })
                 .build(app)?;
 
-            // Global shortcut plugin: no default binding; the user records
-            // their own in settings and we register it dynamically.
+            // Global shortcut: show / focus the main window.
             {
                 use tauri_plugin_global_shortcut::ShortcutState;
                 app.handle().plugin(
                     tauri_plugin_global_shortcut::Builder::new()
                         .with_handler(|app, _shortcut, event| {
                             if event.state == ShortcutState::Pressed {
-                                toggle_popover(app);
+                                show_main_window(app);
                             }
                         })
                         .build(),
@@ -147,25 +198,10 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            match event {
-                // Hide instead of closing so the app keeps living in the tray.
-                WindowEvent::CloseRequested { api, .. } => {
-                    api.prevent_close();
-                    let _ = window.hide();
-                }
-                // Click outside the popover -> hide it (Herd-like behavior),
-                // unless a native dialog is currently open. Popover-style
-                // auto-hide only applies to the macOS menu bar mode.
-                #[cfg(target_os = "macos")]
-                WindowEvent::Focused(false) => {
-                    let ui = window.app_handle().state::<projects::UiState>();
-                    if !ui.dialog_open.load(Ordering::SeqCst)
-                        && !ui.window_pinned.load(Ordering::SeqCst)
-                    {
-                        let _ = window.hide();
-                    }
-                }
-                _ => {}
+            // Close → hide to tray (app keeps running).
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
             }
         })
         .build(tauri::generate_context!())
