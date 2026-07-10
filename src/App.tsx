@@ -293,7 +293,10 @@ export default function App() {
   );
 
   useEffect(() => {
-    refresh();
+    refresh().catch((e) => {
+      console.error("refresh failed", e);
+      setError(String(e));
+    });
     isAutostartEnabled().then(setAutoStart).catch(() => {});
     invoke<string | null>("get_shortcut").then(setShortcut).catch(() => {});
     invoke<string[]>("installed_package_managers").then(setInstalledPms).catch(() => {});
@@ -449,7 +452,7 @@ export default function App() {
     if (stopping.has(key)) return;
     markStopping(key);
     removeRunningTask(key);
-    if (logKey === key) setLogKey(null);
+    // Keep logKey so the side pane still shows the last output after stop.
     try {
       await invoke("stop_script", { projectId: p.id, script });
       window.setTimeout(() => refresh().catch(() => {}), 250);
@@ -667,18 +670,62 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey, true);
   }, [recording]);
 
+  const parseTaskKey = (key: string) => {
+    const i = key.indexOf(":");
+    if (i <= 0) return { projectId: key, script: "" };
+    return { projectId: key.slice(0, i), script: key.slice(i + 1) };
+  };
+
+  const projectById = useCallback(
+    (id: string) => projects.find((p) => p.id === id) ?? null,
+    [projects],
+  );
+
+  const startByKey = async (key: string) => {
+    const { projectId, script } = parseTaskKey(key);
+    const p = projectById(projectId);
+    if (!p || !script) return;
+    if (!p.pm_installed) {
+      flash(t.pmNotInstalled(p.package_manager));
+      return;
+    }
+    setLogKey(key);
+    await startScript(p, script);
+  };
+
+  const stopByKey = async (key: string) => {
+    const { projectId, script } = parseTaskKey(key);
+    const p = projectById(projectId);
+    if (!p || !script) return;
+    setLogKey(key);
+    await stopScript(p, script);
+  };
+
+  const restartByKey = async (key: string) => {
+    const { projectId, script } = parseTaskKey(key);
+    const p = projectById(projectId);
+    if (!p || !script) return;
+    setLogKey(key);
+    await restartScript(p, script);
+  };
+
   const openLogFile = async (key: string) => {
-    const [projectId, ...rest] = key.split(":");
+    const { projectId, script } = parseTaskKey(key);
     try {
       const path = await invoke<string>("get_log_file", {
         projectId,
-        script: rest.join(":"),
+        script,
       });
       await invoke("reveal_in_finder", { path });
     } catch (e) {
       flashErr(e);
     }
   };
+
+  const logTabKeys = useMemo(
+    () => [...new Set([...running.keys(), ...logs.keys()])],
+    [running, logs],
+  );
 
   const projectUrl = (p: Project) => {
     for (const [k, t] of running) {
@@ -723,7 +770,7 @@ export default function App() {
   }, [autostartBooted, projects, running]);
 
   return (
-    <div className="app-shell desktop">
+    <div className={`app-shell desktop ${navigator.userAgent.includes("Mac") ? "is-mac" : ""}`}>
       <header className="titlebar" data-tauri-drag-region>
         <div className="title-identity" data-tauri-drag-region>
           <span className="logo" data-tauri-drag-region>
@@ -996,7 +1043,7 @@ export default function App() {
                             {(isRunning || (logs.get(key)?.length ?? 0) > 0) && (
                               <button
                                 className={`chip small ${logKey === key ? "selected" : ""}`}
-                                onClick={() => setLogKey(logKey === key ? null : key)}
+                                onClick={() => setLogKey(key)}
                               >
                                 {t.logs}
                               </button>
@@ -1096,22 +1143,170 @@ export default function App() {
           );
         })}
       </div>
+      </div>{/* workspace — left: projects */}
 
-      {logKey && (
+      {/* Right log pane only when there is at least one run / log tab */}
+      {logTabKeys.length > 0 && (
+      <aside className="log-pane">
         <div className="log-panel">
           <div className="log-header">
-            <span>{logKey.split(":").slice(1).join(":")} {t.logsTitle}</span>
+            <span className="log-header-title">
+              {logKey
+                ? (() => {
+                    const { projectId, script } = parseTaskKey(logKey);
+                    const name = projectById(projectId)?.name ?? projectId.slice(0, 8);
+                    return `${name} · ${script}`;
+                  })()
+                : t.logsPaneTitle}
+            </span>
             <div className="log-header-actions">
-              <button className="chip small ghost" onClick={() => openLogFile(logKey)}>
-                {t.openLogFile}
-              </button>
-              <button className="icon-btn" onClick={() => setLogKey(null)}>
-                <X size={14} />
-              </button>
+              {logKey && (() => {
+                const live = running.has(logKey) && !stopping.has(logKey);
+                const isStopping = stopping.has(logKey);
+                const p = projectById(parseTaskKey(logKey).projectId);
+                const canStart = !!p?.pm_installed && !!p?.exists;
+                return (
+                  <>
+                    {live || isStopping ? (
+                      <>
+                        <button
+                          className="chip small danger"
+                          title={t.logsStop}
+                          disabled={isStopping}
+                          onClick={() => stopByKey(logKey)}
+                        >
+                          {isStopping ? <RotateCw size={12} className="spin" /> : <Square size={10} fill="currentColor" />}
+                          {isStopping ? t.stopping : t.logsStop}
+                        </button>
+                        {!isStopping && (
+                          <button
+                            className="chip small"
+                            title={t.logsRestart}
+                            onClick={() => restartByKey(logKey)}
+                          >
+                            <RotateCw size={12} />
+                            {t.logsRestart}
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <button
+                        className="chip small selected"
+                        title={t.logsStart}
+                        disabled={!canStart}
+                        onClick={() => startByKey(logKey)}
+                      >
+                        <Play size={12} fill="currentColor" />
+                        {t.logsStart}
+                      </button>
+                    )}
+                    <button className="chip small ghost" onClick={() => openLogFile(logKey)}>
+                      {t.openLogFile}
+                    </button>
+                    <button
+                      className="icon-btn"
+                      title={t.logsClose}
+                      onClick={() => {
+                        const key = logKey;
+                        // Only drop history tabs when not running; live tabs stay for stop/restart.
+                        if (!running.has(key) && !stopping.has(key)) {
+                          setLogs((prev) => {
+                            const next = new Map(prev);
+                            next.delete(key);
+                            return next;
+                          });
+                        }
+                        setLogKey(null);
+                      }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </>
+                );
+              })()}
             </div>
           </div>
+
+          <div className="log-tabs">
+            {logTabKeys.map((key) => {
+              const { projectId, script } = parseTaskKey(key);
+              const project = projectById(projectId);
+              const live = running.has(key) && !stopping.has(key);
+              const isStopping = stopping.has(key);
+              const canStart = !!project?.pm_installed && !!project?.exists;
+              return (
+                <div
+                  key={key}
+                  className={`log-tab ${logKey === key ? "active" : ""} ${live ? "live" : ""} ${isStopping ? "stopping" : ""}`}
+                >
+                  <button
+                    type="button"
+                    className="log-tab-main"
+                    onClick={() => setLogKey(key)}
+                    title={`${project?.name ?? projectId} · ${script}`}
+                  >
+                    {live && <span className="log-tab-dot" />}
+                    <span className="log-tab-meta">
+                      <span className="log-tab-project">{project?.name ?? projectId.slice(0, 6)}</span>
+                      <span className="log-tab-script">{script}</span>
+                    </span>
+                  </button>
+                  <div className="log-tab-actions">
+                    {live || isStopping ? (
+                      <button
+                        type="button"
+                        className="log-tab-action stop"
+                        title={t.logsStop}
+                        disabled={isStopping}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          stopByKey(key);
+                        }}
+                      >
+                        {isStopping ? <RotateCw size={11} className="spin" /> : <Square size={9} fill="currentColor" />}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="log-tab-action start"
+                        title={t.logsStart}
+                        disabled={!canStart}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startByKey(key);
+                        }}
+                      >
+                        <Play size={11} fill="currentColor" />
+                      </button>
+                    )}
+                    {!live && !isStopping && (
+                      <button
+                        type="button"
+                        className="log-tab-action"
+                        title={t.logsClose}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLogs((prev) => {
+                            const next = new Map(prev);
+                            next.delete(key);
+                            return next;
+                          });
+                          if (logKey === key) setLogKey(null);
+                        }}
+                      >
+                        <X size={11} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
           <div className="log-body" ref={logRef}>
-            {logLines.length === 0 ? (
+            {!logKey ? (
+              <div className="log-empty">{t.logsEmpty}</div>
+            ) : logLines.length === 0 ? (
               <div className="log-line dim">{t.waitingOutput}</div>
             ) : (
               logLines.map((l, i) => (
@@ -1122,8 +1317,8 @@ export default function App() {
             )}
           </div>
         </div>
+      </aside>
       )}
-      </div>{/* workspace */}
 
       {settingsOpen && (
         <aside className="settings-sidebar">

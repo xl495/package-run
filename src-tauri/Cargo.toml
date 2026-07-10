@@ -1,6 +1,6 @@
 [package]
 name = "package-run"
-version = "0.1.0"
+version = "0.2.0"
 description = "Lightweight local frontend project manager (menu bar / system tray)"
 authors = ["huangxinliang"]
 license = "MIT"
@@ -33,4 +33,9 @@ libc = "0.2.186"
 tauri-plugin-autostart = "2.5.1"
 tauri-plugin-global-shortcut = "2.3.2"
 ureq = { version = "2", features = ["json"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3.2", features = ["NSWindow", "NSButton", "NSView", "NSResponder", "NSControl"] }
+objc2-foundation = { version = "0.3.2", features = ["NSGeometry"] }
 

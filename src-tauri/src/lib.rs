@@ -4,6 +4,9 @@ pub mod runner;
 pub mod settings;
 pub mod update;
 
+#[cfg(target_os = "macos")]
+mod macos_window;
+
 use tauri::{
     image::Image,
     menu::{Menu, MenuItem, PredefinedMenuItem},
@@ -130,6 +133,10 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
+            // Vertically center traffic lights with the custom overlay titlebar.
+            #[cfg(target_os = "macos")]
+            macos_window::setup_main_window(app.handle());
+
             let menu = build_tray_menu(app.handle())?;
             let icon = Image::from_bytes(include_bytes!("../icons/tray-icon.png"))?;
 
@@ -198,10 +205,20 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            // Close → hide to tray (app keeps running).
-            if let WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.hide();
+            match event {
+                // Close → hide to tray (app keeps running).
+                WindowEvent::CloseRequested { api, .. } => {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+                // Keep traffic lights centered after resize / DPI change.
+                #[cfg(target_os = "macos")]
+                WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. } => {
+                    if let Some(w) = window.app_handle().get_webview_window("main") {
+                        macos_window::align_traffic_lights(&w);
+                    }
+                }
+                _ => {}
             }
         })
         .build(tauri::generate_context!())

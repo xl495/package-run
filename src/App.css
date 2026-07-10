@@ -77,8 +77,12 @@ html[data-theme="light"] {
 html,
 body,
 #root {
+  width: 100%;
   height: 100%;
+  margin: 0;
+  padding: 0;
   background: var(--bg);
+  color: var(--text);
 }
 
 body {
@@ -104,15 +108,19 @@ button svg {
   stroke-width: 2.1;
 }
 
+/* Fill the Tauri webview explicitly — 100vh is unreliable in some WKWebViews. */
 .app-shell {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  height: 100vh;
   background:
     radial-gradient(120% 60% at 50% -10%, rgba(63, 221, 141, 0.055), transparent 60%),
     var(--bg);
+  color: var(--text);
   overflow: hidden;
-  position: relative;
 }
 
 .app-shell::before {
@@ -135,27 +143,48 @@ button svg {
   z-index: 1;
 }
 
-/* Main workspace + optional settings side panel */
+/* Main stage: left projects | right logs | optional settings */
 .main-stage {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  width: 100%;
   display: flex;
   flex-direction: row;
   overflow: hidden;
 }
 
+/* Left: project list — full width when log pane is hidden */
 .workspace {
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 auto;
+  min-width: 280px;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
+/* When log pane is open, pin project column width */
+.main-stage:has(.log-pane) .workspace {
+  flex: 0 0 42%;
+  max-width: 560px;
+  border-right: 1px solid var(--border);
+}
+
+/* Right: log pane (only mounted when there are run tabs) */
+.log-pane {
+  flex: 1 1 58%;
+  min-width: 280px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--log-bg);
+  animation: slide-side 0.18s ease;
+}
+
 .settings-sidebar {
-  width: 320px;
-  max-width: 40%;
+  width: 300px;
+  max-width: 36%;
   flex-shrink: 0;
   border-left: 1px solid var(--border);
   background: var(--bg-raise);
@@ -193,38 +222,59 @@ button svg {
   gap: 12px;
 }
 
-/* ============ title bar ============ */
+/* ============ title bar ============
+   Height 52px must match macos_window::TITLEBAR_HEIGHT so traffic lights
+   (positioned in Rust) share the same vertical midline as the logo. */
 .titlebar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 18px 10px;
+  height: 52px;
+  min-height: 52px;
+  padding: 0 16px;
+  box-sizing: border-box;
   flex-shrink: 0;
+  background: var(--bg);
   border-bottom: 1px solid var(--border);
+}
+
+/* macOS Overlay: pad past the traffic-light cluster */
+.app-shell.is-mac .titlebar {
+  padding-left: 78px;
 }
 
 .title-identity {
   display: flex;
   align-items: center;
   gap: 8px;
+  height: 100%;
+  line-height: 1;
 }
 
 .logo {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
   font-weight: 600;
   font-size: 14px;
   letter-spacing: 0.04em;
+  line-height: 1;
   color: var(--text);
 }
 
 .global-running {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 28px;
-  padding: 2px 7px;
+  height: 22px;
+  padding: 0 7px;
   border: 1px solid var(--border-strong);
   border-radius: 999px;
   color: var(--text-faint);
   font-size: 10px;
   font-weight: 600;
-  line-height: 1.25;
+  line-height: 1;
   text-align: center;
 }
 
@@ -255,12 +305,14 @@ button svg {
 
 .titlebar-actions {
   display: flex;
+  align-items: center;
   gap: 3px;
+  height: 100%;
 }
 
 .icon-btn {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border: none;
   border-radius: 7px;
   background: transparent;
@@ -379,8 +431,9 @@ button svg {
 /* ============ project list ============ */
 .content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 8px 16px 16px;
+  padding: 8px 14px 16px;
 }
 
 .empty {
@@ -1112,28 +1165,38 @@ button svg {
   justify-content: space-between;
 }
 
-/* ============ log panel ============ */
+/* ============ log panel (right column) ============ */
 .log-panel {
-  flex-shrink: 0;
-  height: min(280px, 36vh);
+  flex: 1;
+  min-height: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--log-bg);
-  border-top: 1px solid var(--border-strong);
 }
 
 .log-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 7px 12px;
+  padding: 10px 14px;
   color: #7d8590;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.03em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+  gap: 8px;
 }
 
-.log-header > span::before {
+.log-header-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.log-header-title::before {
   content: "› ";
   color: var(--green);
 }
@@ -1142,6 +1205,7 @@ button svg {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .log-header .icon-btn {
@@ -1153,10 +1217,164 @@ button svg {
   border-color: rgba(255, 255, 255, 0.14);
 }
 
+.log-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+  max-height: 96px;
+  overflow-y: auto;
+}
+
+.log-tab {
+  display: inline-flex;
+  align-items: stretch;
+  max-width: 200px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #8b949e;
+  font-family: var(--mono);
+  overflow: hidden;
+}
+
+.log-tab:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #c9d1d9;
+}
+
+.log-tab.active {
+  border-color: rgba(63, 221, 141, 0.45);
+  background: rgba(63, 221, 141, 0.1);
+  color: var(--green);
+}
+
+.log-tab.live {
+  border-color: rgba(63, 221, 141, 0.28);
+}
+
+.log-tab.stopping {
+  opacity: 0.75;
+}
+
+.log-tab-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  padding: 5px 8px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.log-tab-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.log-tab-project {
+  font-size: 9.5px;
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.log-tab-script {
+  font-size: 11.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.log-tab-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px rgba(63, 221, 141, 0.7);
+  flex-shrink: 0;
+}
+
+.log-tab-actions {
+  display: flex;
+  align-items: center;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.log-tab-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 100%;
+  min-height: 32px;
+  border: none;
+  background: transparent;
+  color: #8b949e;
+  cursor: pointer;
+  padding: 0;
+}
+
+.log-tab-action:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e6edf3;
+}
+
+.log-tab-action.start:hover:not(:disabled) {
+  color: var(--green);
+  background: rgba(63, 221, 141, 0.12);
+}
+
+.log-tab-action.stop:hover:not(:disabled) {
+  color: var(--red);
+  background: rgba(255, 98, 89, 0.12);
+}
+
+.log-tab-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
 .log-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 0 12px 10px;
+  padding: 10px 14px 14px;
+}
+
+.log-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 120px;
+  padding: 24px;
+  text-align: center;
+  color: #545d68;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .log-line {

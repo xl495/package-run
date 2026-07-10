@@ -1,7 +1,7 @@
 {
   "name": "package-run",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Lightweight local frontend project manager — menu bar on macOS, tray on Windows/Linux",
   "type": "module",
   "packageManager": "pnpm@10.33.4",
