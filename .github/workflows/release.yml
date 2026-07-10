@@ -1,0 +1,100 @@
+# 跨平台自动打包：创建 Draft GitHub Release 并上传安装包
+# 触发：push tag v*、推送到 release 分支、或 Actions 手动运行
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - release
+  workflow_dispatch:
+
+jobs:
+  publish-tauri:
+    permissions:
+      contents: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: '--target aarch64-apple-darwin'
+          - platform: macos-latest
+            args: '--target x86_64-apple-darwin'
+          - platform: ubuntu-22.04
+            args: ''
+          - platform: windows-latest
+            args: ''
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # version 从 package.json 的 packageManager 读取；勿再写 version，否则会与字段冲突导致失败
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and upload
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: 'Package Run v__VERSION__'
+          releaseBody: |
+            ## Package Run v__VERSION__
+
+            Lightweight local frontend project manager (Tauri 2).
+            轻量级本地前端项目管理工具（Tauri 2）。
+
+            ### Download / 下载
+
+            | Platform / 平台 | Package / 建议安装包 |
+            | --- | --- |
+            | macOS Apple Silicon (M 系列) | `*-aarch64.dmg` / `.app.tar.gz` |
+            | macOS Intel | `*-x64.dmg` / `.app.tar.gz` |
+            | Windows | `.msi` 或 NSIS `.exe` |
+            | Linux | `.AppImage` / `.deb` |
+
+            ### macOS unsigned builds / 未签名提示
+
+            If macOS says the app is damaged / 若提示「已损坏」:
+
+            ```bash
+            xattr -cr "/Applications/Package Run.app"
+            ```
+
+            Add full release notes before publishing.
+
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
