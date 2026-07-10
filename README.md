@@ -2,10 +2,19 @@
 
 [English](./README.md) · [中文](./README.zh.md)
 
-Lightweight local frontend project manager, built with **Tauri 2**.  
-On macOS it lives in the menu bar (similar to Laravel Herd); on Windows / Linux it runs as a normal window with a system tray icon.
+**Keywords:** frontend project manager · local dev server runner · menu bar app · system tray · Tauri · React · pnpm/npm/yarn/bun · Laravel Herd alternative for JavaScript
 
-Manage multiple frontend dev servers in one place: start, stop, stream logs, open localhost, jump into your editor or terminal — without juggling terminal tabs.
+**Package Run** is a lightweight **local frontend project manager** built with **Tauri 2**.  
+On macOS it lives in the menu bar (similar to [Laravel Herd](https://herd.laravel.com/)); on Windows / Linux it runs as a normal window with a system tray icon.
+
+Manage multiple frontend dev servers in one place: **start / stop / restart** `package.json` scripts, stream logs, open `localhost`, jump into your editor or terminal — without juggling terminal tabs.
+
+| | |
+| --- | --- |
+| **Repo** | https://github.com/xl495/package-run |
+| **Releases / download** | https://github.com/xl495/package-run/releases |
+| **Latest** | [v0.1.0](https://github.com/xl495/package-run/releases/tag/v0.1.0) |
+| **Stack** | Tauri 2 · React 19 · TypeScript · Vite · Rust |
 
 ## Features
 

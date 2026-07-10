@@ -2,10 +2,19 @@
 
 [English](./README.md) · [中文](./README.zh.md)
 
-轻量级本地前端项目管理工具，基于 **Tauri 2** 构建。  
-macOS 上常驻菜单栏（类似 Laravel Herd）；Windows / Linux 为常规窗口 + 系统托盘。
+**关键词：** 前端项目管理 · 本地 dev server · 菜单栏应用 · 系统托盘 · Tauri · React · pnpm/npm/yarn/bun · JS 版 Laravel Herd
 
-一键管理多个前端项目的 dev server：启动、停止、看日志、跳转本地地址、在编辑器/终端中打开——不用在多个终端标签里来回切。
+**Package Run** 是轻量级**本地前端项目管理工具**，基于 **Tauri 2** 构建。  
+macOS 上常驻菜单栏（类似 [Laravel Herd](https://herd.laravel.com/)）；Windows / Linux 为常规窗口 + 系统托盘。
+
+一键管理多个前端项目的 dev server：**启动 / 停止 / 重启** `package.json` 脚本、看日志、跳转 `localhost`、在编辑器/终端中打开——不用在多个终端标签里来回切。
+
+| | |
+| --- | --- |
+| **仓库** | https://github.com/xl495/package-run |
+| **下载 / Releases** | https://github.com/xl495/package-run/releases |
+| **当前版本** | [v0.1.0](https://github.com/xl495/package-run/releases/tag/v0.1.0) |
+| **技术栈** | Tauri 2 · React 19 · TypeScript · Vite · Rust |
 
 ## 功能
 
