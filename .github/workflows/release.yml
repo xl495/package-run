@@ -95,6 +95,7 @@ jobs:
 
             Add full release notes before publishing.
 
-          releaseDraft: true
+          # false = 构建成功后直接出现在 Releases 页（true 则是仅协作者可见的草稿）
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
