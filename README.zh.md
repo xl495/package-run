@@ -120,4 +120,4 @@ xattr -cr "/Applications/Package Run.app"
 
 ## License
 
-Private — 如需开源可自行补充 License 文件。
+[MIT](./LICENSE)

@@ -120,4 +120,4 @@ Main files: `projects.json` (project list & config), `settings.json` (shortcuts,
 
 ## License
 
-Private — add a License file if you open-source the project.
+[MIT](./LICENSE)
