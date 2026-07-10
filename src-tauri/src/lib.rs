@@ -2,6 +2,7 @@ pub mod ports;
 pub mod projects;
 pub mod runner;
 pub mod settings;
+pub mod update;
 
 #[cfg(target_os = "macos")]
 use std::sync::atomic::Ordering;
@@ -92,6 +93,7 @@ pub fn run() {
             ports::kill_port,
             settings::get_shortcut,
             settings::set_shortcut,
+            update::check_app_update,
             set_running_badge,
             set_window_pinned,
             quit_app,

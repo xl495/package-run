@@ -90,6 +90,17 @@ const zh = {
   errNoEditor: "未找到可用的编辑器",
   errNoTerminal: "无法打开终端",
   errShortcut: (detail: string) => `注册快捷键失败：${detail}`,
+  // updates
+  updateAvailable: (version: string) => `发现新版本 v${version}`,
+  updateView: "查看更新",
+  updateLater: "稍后",
+  updateCheck: "检查更新",
+  updateChecking: "检查中…",
+  updateLatest: (version: string) => `已是最新版 v${version}`,
+  updateFailed: "检查更新失败，请稍后重试",
+  updateSection: "关于",
+  updateCurrent: (version: string) => `当前版本 v${version}`,
+  updateOpenReleases: "打开下载页",
 };
 
 const en: typeof zh = {
@@ -182,6 +193,16 @@ const en: typeof zh = {
   errNoEditor: "No editor found",
   errNoTerminal: "Cannot open a terminal",
   errShortcut: (detail: string) => `Failed to register shortcut: ${detail}`,
+  updateAvailable: (version: string) => `Update available: v${version}`,
+  updateView: "View update",
+  updateLater: "Later",
+  updateCheck: "Check for updates",
+  updateChecking: "Checking…",
+  updateLatest: (version: string) => `You're on the latest version v${version}`,
+  updateFailed: "Could not check for updates",
+  updateSection: "About",
+  updateCurrent: (version: string) => `Version v${version}`,
+  updateOpenReleases: "Open releases",
 };
 
 export const STRINGS: Record<Lang, typeof zh> = { zh, en };

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -8,6 +9,7 @@ import {
   isEnabled as isAutostartEnabled,
 } from "@tauri-apps/plugin-autostart";
 import {
+  ArrowUpCircle,
   ChevronRight,
   ChevronsUpDown,
   ExternalLink,
@@ -32,6 +34,12 @@ import {
   X,
 } from "lucide-react";
 import { detectLang, persistLang, STRINGS, translateError, type Lang } from "./i18n";
+import {
+  checkForUpdate,
+  dismissUpdate,
+  RELEASES_PAGE,
+  type AvailableUpdate,
+} from "./update";
 import "./App.css";
 
 interface LaunchConfig {
@@ -212,6 +220,9 @@ export default function App() {
   const [cfgEnv, setCfgEnv] = useState("");
   const [cfgEnvFile, setCfgEnvFile] = useState("");
   const [cfgArgs, setCfgArgs] = useState("");
+  const [appVersion, setAppVersion] = useState("");
+  const [updateInfo, setUpdateInfo] = useState<AvailableUpdate | null>(null);
+  const [updateChecking, setUpdateChecking] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
   const t = STRINGS[lang];
   const totalRunning = Math.max(0, running.size - stopping.size);
@@ -256,11 +267,53 @@ export default function App() {
     clearStopping(key);
   }, [clearStopping]);
 
+  const flash = useCallback((msg: string) => {
+    setError(msg);
+    window.setTimeout(() => setError(null), 4000);
+  }, []);
+
+  const runUpdateCheck = useCallback(
+    async (opts?: { ignoreDismissed?: boolean; manual?: boolean }) => {
+      setUpdateChecking(true);
+      try {
+        const version = appVersion || (await getVersion());
+        if (!appVersion) setAppVersion(version);
+        const found = await checkForUpdate(version, {
+          ignoreDismissed: opts?.ignoreDismissed,
+        });
+        setUpdateInfo(found);
+        if (opts?.manual) {
+          if (found) {
+            flash(t.updateAvailable(found.version));
+          } else {
+            flash(t.updateLatest(version));
+          }
+        }
+      } catch {
+        if (opts?.manual) flash(t.updateFailed);
+      } finally {
+        setUpdateChecking(false);
+      }
+    },
+    [appVersion, flash, t],
+  );
+
   useEffect(() => {
     refresh();
     isAutostartEnabled().then(setAutoStart).catch(() => {});
     invoke<string | null>("get_shortcut").then(setShortcut).catch(() => {});
     invoke<string[]>("installed_package_managers").then(setInstalledPms).catch(() => {});
+    getVersion()
+      .then((v) => {
+        setAppVersion(v);
+        // Soft check shortly after launch so UI paints first.
+        window.setTimeout(() => {
+          checkForUpdate(v)
+            .then((found) => setUpdateInfo(found))
+            .catch(() => {});
+        }, 2500);
+      })
+      .catch(() => {});
     const unlisteners = [
       listen<{ key: string; line: string }>("task-log", (e) => {
         setLogs((prev) => {
@@ -314,11 +367,6 @@ export default function App() {
   useEffect(() => {
     invoke("set_running_badge", { count: totalRunning }).catch(() => {});
   }, [totalRunning]);
-
-  const flash = (msg: string) => {
-    setError(msg);
-    setTimeout(() => setError(null), 4000);
-  };
 
   const flashErr = (e: unknown) => flash(translateError(String(e), t));
 
@@ -704,6 +752,33 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {updateInfo && (
+        <div className="update-banner" role="status">
+          <ArrowUpCircle size={15} className="update-banner-icon" />
+          <span className="update-banner-text">
+            {t.updateAvailable(updateInfo.version)}
+          </span>
+          <button
+            className="chip small"
+            onClick={() => {
+              openUrl(updateInfo.htmlUrl).catch(() => openUrl(RELEASES_PAGE));
+            }}
+          >
+            {t.updateView}
+          </button>
+          <button
+            className="icon-btn tiny"
+            title={t.updateLater}
+            onClick={() => {
+              dismissUpdate(updateInfo.version);
+              setUpdateInfo(null);
+            }}
+          >
+            <X size={12} />
+          </button>
+        </div>
+      )}
 
       {projects.length > 3 && (
         <div className="search-bar">
@@ -1112,6 +1187,32 @@ export default function App() {
                   )}
                 </div>
               )}
+            </div>
+
+            <div className="settings-section">
+              <div className="settings-heading">{t.updateSection}</div>
+              <div className="settings-row">
+                <span className="hint">
+                  {appVersion ? t.updateCurrent(appVersion) : "…"}
+                </span>
+              </div>
+              <div className="settings-row">
+                <button
+                  className="chip small"
+                  disabled={updateChecking}
+                  onClick={() => runUpdateCheck({ ignoreDismissed: true, manual: true })}
+                >
+                  <ArrowUpCircle size={12} />
+                  {updateChecking ? t.updateChecking : t.updateCheck}
+                </button>
+                <button
+                  className="chip small ghost"
+                  onClick={() => openUrl(RELEASES_PAGE)}
+                >
+                  <ExternalLink size={12} />
+                  {t.updateOpenReleases}
+                </button>
+              </div>
             </div>
           </div>
         )}

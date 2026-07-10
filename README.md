@@ -32,6 +32,7 @@ Manage multiple frontend dev servers in one place: **start / stop / restart** `p
 | Quick open | Open in Cursor / VS Code / Zed / WebStorm, iTerm / Warp / Terminal, or Finder |
 | Launch config | Per-script port, env vars, env file, and extra args |
 | Autostart | App launch at login; optional per-script autostart |
+| Update reminder | Checks GitHub Releases on launch; banner + Settings → Check for updates |
 | Appearance | Chinese / English UI; light / dark / system theme |
 
 ## Screenshots
