@@ -13,8 +13,26 @@ Manage multiple frontend dev servers in one place: **start / stop / restart** `p
 | --- | --- |
 | **Repo** | https://github.com/xl495/package-run |
 | **Releases / download** | https://github.com/xl495/package-run/releases |
-| **Latest** | [v0.1.0](https://github.com/xl495/package-run/releases/tag/v0.1.0) |
+| **Latest** | [v0.2.0](https://github.com/xl495/package-run/releases/tag/v0.2.0) |
 | **Stack** | Tauri 2 · React 19 · TypeScript · Vite · Rust |
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/main-dark.png" alt="Package Run — dark theme, projects + live logs" width="900" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/main-light.png" alt="Package Run — light theme" width="900" />
+</p>
+
+| Dark | Light | Empty |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/main-dark.png" width="280" alt="Dark" /> | <img src="docs/screenshots/main-light.png" width="280" alt="Light" /> | <img src="docs/screenshots/empty-dark.png" width="280" alt="Empty" /> |
+
+- **Left:** project list, package manager, git branch, start / stop scripts  
+- **Right:** live run logs with quick start / stop tabs (hidden when idle)  
+- **Themes:** dark / light / system  
 
 ## Features
 
@@ -22,10 +40,12 @@ Manage multiple frontend dev servers in one place: **start / stop / restart** `p
 | --- | --- |
 | Menu bar / tray | Left/right-click the tray icon for a **native menu** (Herd-style): Open, Add Project, Settings, Updates, Quit. Double-click opens the main window. |
 | Main window | Full resizable management window (not a tiny popover) for projects, scripts, logs, and settings |
+| Split view | Projects on the left, run logs on the right; log pane hides when nothing is running |
 | Project management | Add local folders with a `package.json`; search, pin, and drag to reorder |
 | Package managers | Auto-detect pnpm / yarn / bun / npm (lockfile + `packageManager` field); manual override supported |
 | Git status | Shows current branch and dirty working tree indicator |
 | Script control | Start / stop / restart any script; stop kills the whole process tree (no orphans) |
+| Log tabs | Running / history scripts as tabs with quick ▶ / ⏹ |
 | Live logs | ~500 lines in the panel; full logs on disk under `logs/`; clickable URLs |
 | Local preview | Detects `localhost` URLs in output and opens them in the browser |
 | Port tools | Port occupancy check & one-click release; auto-locate the process on `EADDRINUSE` |
@@ -34,10 +54,6 @@ Manage multiple frontend dev servers in one place: **start / stop / restart** `p
 | Autostart | App launch at login; optional per-script autostart |
 | Update reminder | Checks GitHub Releases on launch; banner + Settings → Check for updates |
 | Appearance | Chinese / English UI; light / dark / system theme |
-
-## Screenshots
-
-<!-- Add screenshots after publishing the repo -->
 
 ## Tech stack
 

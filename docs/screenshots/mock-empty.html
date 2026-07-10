@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <title>Package Run — empty</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@5.2.7/400.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@5.2.7/500.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@5.2.7/600.css" />
+  <style>
+    :root {
+      --bg: #101317; --bg-raise: #161a20; --border: rgba(255,255,255,0.07);
+      --text: #e6edf3; --text-dim: #8b949e; --text-faint: #545d68;
+      --green: #3fdd8d; --green-dim: rgba(63,221,141,0.14);
+      --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--mono); background: #2a2d32; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center; padding: 32px;
+    }
+    .window {
+      width: 960px; height: 560px; border-radius: 12px; overflow: hidden;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06);
+      display: flex; flex-direction: column; background: var(--bg);
+    }
+    .chrome {
+      height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 14px;
+      background: var(--bg-raise); border-bottom: 1px solid var(--border);
+    }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .r { background: #ff5f57; } .y { background: #febc2e; } .g { background: #28c840; }
+    .chrome-title { flex: 1; text-align: center; font-size: 12px; color: var(--text-dim); }
+    .app {
+      flex: 1; display: flex; flex-direction: column;
+      background: radial-gradient(120% 60% at 50% -10%, rgba(63,221,141,0.055), transparent 60%), var(--bg);
+    }
+    .titlebar {
+      height: 52px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px; border-bottom: 1px solid var(--border);
+    }
+    .logo { font-weight: 600; font-size: 14px; color: var(--text); }
+    .logo::before { content: "› "; color: var(--green); }
+    .logo::after { content: "_"; color: var(--green); }
+    .badge {
+      margin-left: 10px; font-size: 10px; padding: 3px 8px; border-radius: 999px;
+      border: 1px solid var(--border); color: var(--text-faint);
+    }
+    .icon { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-dim); }
+    .empty {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+      color: var(--text-faint); font-size: 13px;
+    }
+    .empty::before { content: "[ ]"; font-size: 28px; letter-spacing: 0.1em; }
+    .primary {
+      padding: 8px 18px; border: 1px solid var(--green); border-radius: 8px;
+      background: var(--green-dim); color: var(--green); font-size: 12.5px; font-weight: 500;
+      font-family: var(--mono);
+    }
+  </style>
+</head>
+<body>
+  <div class="window" id="shot">
+    <div class="chrome">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <div class="chrome-title">Package Run</div>
+    </div>
+    <div class="app">
+      <header class="titlebar">
+        <div><span class="logo">Package Run</span><span class="badge">idle</span></div>
+        <div><span class="icon">+</span><span class="icon">⚙</span><span class="icon">⏻</span></div>
+      </header>
+      <div class="empty">
+        <p>还没有项目</p>
+        <button class="primary">添加一个项目文件夹</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
