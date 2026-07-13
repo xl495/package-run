@@ -38,7 +38,15 @@ import {
   RELEASES_PAGE,
   type AvailableUpdate,
 } from "./update";
+import {
+  demoLogs,
+  demoProjects,
+  demoRunning,
+  detectDemoMode,
+} from "./demo";
 import "./App.css";
+
+const DEMO_MODE = detectDemoMode();
 
 interface LaunchConfig {
   port: number | null;
@@ -84,6 +92,10 @@ type Theme = "system" | "light" | "dark";
 const THEME_KEY = "package-run-theme";
 
 function detectTheme(): Theme {
+  if (typeof window !== "undefined") {
+    const q = new URLSearchParams(window.location.search).get("theme");
+    if (q === "light" || q === "dark" || q === "system") return q;
+  }
   const saved = localStorage.getItem(THEME_KEY);
   return saved === "light" || saved === "dark" || saved === "system" ? saved : "system";
 }
@@ -224,6 +236,24 @@ export default function App() {
   const busyRef = useRef<Set<string>>(new Set());
 
   const refresh = useCallback(async () => {
+    if (DEMO_MODE === "full") {
+      setProjects(demoProjects());
+      setRunning(demoRunning());
+      setLogs(demoLogs());
+      setExpanded("demo-storefront");
+      setLogKey("demo-storefront:dev");
+      setInstalledPms(["pnpm", "npm", "yarn", "bun"]);
+      setAppVersion("0.2.0");
+      return;
+    }
+    if (DEMO_MODE === "empty") {
+      setProjects([]);
+      setRunning(new Map());
+      setLogs(new Map());
+      setLogKey(null);
+      setAppVersion("0.2.0");
+      return;
+    }
     const [list, tasks] = await Promise.all([
       invoke<Project[]>("list_projects"),
       invoke<TaskInfo[]>("running_tasks"),
@@ -297,6 +327,10 @@ export default function App() {
       console.error("refresh failed", e);
       setError(String(e));
     });
+    if (DEMO_MODE) {
+      // Skip Tauri listeners / autostart in browser screenshot mode.
+      return;
+    }
     isAutostartEnabled().then(setAutoStart).catch(() => {});
     invoke<string | null>("get_shortcut").then(setShortcut).catch(() => {});
     invoke<string[]>("installed_package_managers").then(setInstalledPms).catch(() => {});

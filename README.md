@@ -34,6 +34,8 @@ Manage multiple frontend dev servers in one place: **start / stop / restart** `p
 - **Right:** live run logs with quick start / stop tabs (hidden when idle)  
 - **Themes:** dark / light / system  
 
+> Screenshots are captured from the **real React UI** (`App.tsx` + `App.css`) with sample project data via `?demo=1` (browser screenshot mode — same components as the desktop app).
+
 ## Features
 
 | Feature | Description |
